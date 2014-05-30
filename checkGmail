@@ -1,0 +1,37 @@
+#!/bin/bash
+
+repo_config_files="$HOME/.mutt/mutt.identity"
+tmp_file="/tmp/checkMail.tmp"
+
+get_mail()
+{
+    #get user and password from identity file
+    user=`grep 'set imap_user' $repo_config_files | awk '{print $4}'`
+    pass=`grep 'set imap_pass' $repo_config_files | awk '{print $4}'`
+
+    #remove "" from user and password
+    user=${user//\"/}
+    pass=${pass//\"/}
+
+    #get rss flow from gmail
+    curl -s -u "$user:$pass" https://mail.google.com/mail/feed/atom|grep '<fullcount>'|sed -e 's/.*<fullcount>//' -e 's/<\/fullcount>.*//'
+
+}
+
+print_mail()
+{
+    notify-send "New mail : $1"
+    echo "#!/bin/bash">$tmp_file
+    echo "mail_old=$1">>$tmp_file
+}
+
+mail_nb=$(get_mail)
+if [[ -f $tmp_file ]]; then
+    . $tmp_file
+    if [[ $mail_old != $mail_nb ]]; then
+        print_mail $mail_nb
+    fi
+else
+    print_mail $mail_nb
+fi
+echo $mail_nb
